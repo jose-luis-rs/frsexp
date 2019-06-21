@@ -1,0 +1,207 @@
+// -*- C++ -*-
+
+//          Specification file for FRS experiment S341
+//
+//(Matthias Holl, Dr. Haik Simon, Vasily Volkov, 31 October 2008) 
+//
+
+#include "spec/land_std_vme.spec"
+#include "../land_common/barrier.spec"
+
+// Include specification files for the FRS electronic modules
+#include "spec/frs_vme_caen_v259.spec"
+#include "spec/frs_vme_caen_v830.spec"
+#include "spec/frs_vme_caen_v775.spec"
+#include "spec/vme_caen_v1290_frs.spec"
+
+// Dummy modules. Used for processing the 'Invalid data' header word.
+#include "spec/frs_empty_32bit_word_v830.spec"
+#include "spec/frs_empty_32bit_word_v775.spec"
+
+#include "../land_common/trloii.spec"
+#include "../land_common/whiterabbit.spec"
+
+
+SUBEVENT(tpat_subev)
+{
+	select several {
+		tpat = TRLOII_TPAT(id=0xcf);
+	}
+}
+
+SUBEVENT(wr_100)
+{
+	ts100 = TIMESTAMP_WHITERABBIT(id=0x100);
+	wr_multi = WR_MULTI();
+}
+
+// Our event consists of two subevents which are two VME crates that were used
+// The subevents are separated by the VME processor ID 
+EVENT
+{
+  master_ts = wr_100(type=12, subtype=1, control=19);
+  master_tpat = tpat_subev(type=36, subtype=3600, control=19);
+  vme0 = FRS_MASTER(type=88, subtype=8800, procid=10);
+  vme1 = FRS_CRATE(type=88,subtype=8800,procid=30);
+  vme2 = TPC_CRATE(type=88,subtype=8800,procid=20);
+}
+
+
+SUBEVENT(FRS_MASTER)
+{
+  header = LAND_STD_VME();
+  barrier = BARRIER();
+  select several {
+      scaler_0 = VME_CAEN_V830_FRS(geom=8);
+      qdc_0 = VME_CAEN_V792_FRS(geom=11);
+      tdc_0 = VME_CAEN_V1290_FRS(geom=16); 
+  }
+
+}
+
+SUBEVENT(FRS_CRATE)
+{
+
+  header = LAND_STD_VME();
+
+  select several {
+      scaler_0 = VME_CAEN_V830_FRS(geom=0);    
+      tdc_0 = VME_CAEN_V775_FRS(geom=8);
+      tdc_1 = VME_CAEN_V775_FRS(geom=9);
+      adc_0 = VME_CAEN_V785_FRS(geom=3);
+      adc_1 = VME_CAEN_V785_FRS(geom=12);
+    }
+}
+
+SUBEVENT(TPC_CRATE)
+{
+  header = LAND_STD_VME();
+
+  select several
+    { 
+      tdc_0 = VME_CAEN_V775_FRS(geom=8);
+      tdc_1 = VME_CAEN_V775_FRS(geom=9);
+      adc_0 = VME_CAEN_V785_FRS(geom=3);
+      adc_1 = VME_CAEN_V785_FRS(geom=16);
+    }
+}
+
+// Signals that are read out and written to the PAW ntuple
+
+
+//FRS crate scaler
+
+SIGNAL(FreeTrig, vme0.scaler_0.data[0],DATA32);
+SIGNAL(AccTrig, vme0.scaler_0.data[1],DATA32);
+SIGNAL(Spill, vme0.scaler_0.data[2],DATA32);
+SIGNAL(ClockoneHz, vme0.scaler_0.data[3],DATA32);
+SIGNAL(ClocktenHz, vme0.scaler_0.data[4],DATA32);
+SIGNAL(DeadTime, vme0.scaler_0.data[5],DATA32);
+SIGNAL(ClockhundredHz, vme0.scaler_0.data[6],DATA32);
+
+SIGNAL(SCI21L, vme0.scaler_0.data[16],DATA32);
+SIGNAL(SCI41L, vme0.scaler_0.data[17],DATA32);
+SIGNAL(SCI42L, vme0.scaler_0.data[18],DATA32);
+SIGNAL(SCI43L, vme0.scaler_0.data[19],DATA32);
+SIGNAL(SCI81L, vme0.scaler_0.data[20],DATA32);
+
+SIGNAL(SCI21R, vme0.scaler_0.data[21],DATA32);
+SIGNAL(SCI41R, vme0.scaler_0.data[22],DATA32);
+SIGNAL(SCI42R, vme0.scaler_0.data[23],DATA32);
+SIGNAL(SCI43R, vme0.scaler_0.data[24],DATA32);
+SIGNAL(SCI81R, vme0.scaler_0.data[25],DATA32);
+
+
+//Scintillators dE, QDC signals
+
+SIGNAL(SC41LdE,vme0.qdc_0.data[0],(DATA12_OVERFLOW,float));
+SIGNAL(SC41RdE,vme0.qdc_0.data[1],(DATA12_OVERFLOW,float));
+SIGNAL(SC21LdE,vme0.qdc_0.data[2],(DATA12_OVERFLOW,float));
+SIGNAL(SC21RdE,vme0.qdc_0.data[3],(DATA12_OVERFLOW,float));
+SIGNAL(SC42LdE,vme0.qdc_0.data[4],(DATA12_OVERFLOW,float));
+SIGNAL(SC42RdE,vme0.qdc_0.data[5],(DATA12_OVERFLOW,float));
+SIGNAL(SC43LdE,vme0.qdc_0.data[11],(DATA12_OVERFLOW,float));
+SIGNAL(SC43RdE,vme0.qdc_0.data[12],(DATA12_OVERFLOW,float));
+SIGNAL(SC81LdE,vme0.qdc_0.data[13],(DATA12_OVERFLOW,float));
+SIGNAL(SC81RdE,vme0.qdc_0.data[14],(DATA12_OVERFLOW,float));
+
+
+//Scintillators time signals
+
+SIGNAL(SC41Lt,vme0.tdc_0.data[0],(DATA12_OVERFLOW,float));
+SIGNAL(SC41Rt,vme0.tdc_0.data[1],(DATA12_OVERFLOW,float));
+SIGNAL(SC21Lt,vme0.tdc_0.data[2],(DATA12_OVERFLOW,float));
+SIGNAL(SC21Rt,vme0.tdc_0.data[3],(DATA12_OVERFLOW,float));
+SIGNAL(SC42Lt,vme0.tdc_0.data[4],(DATA12_OVERFLOW,float));
+SIGNAL(SC42Rt,vme0.tdc_0.data[5],(DATA12_OVERFLOW,float));
+SIGNAL(SC43Lt,vme0.tdc_0.data[6],(DATA12_OVERFLOW,float));
+SIGNAL(SC43Rt,vme0.tdc_0.data[7],(DATA12_OVERFLOW,float));
+SIGNAL(SC81Lt,vme0.tdc_0.data[8],(DATA12_OVERFLOW,float));
+SIGNAL(SC81Rt,vme0.tdc_0.data[9],(DATA12_OVERFLOW,float));
+
+//Musics adc signals
+
+//SIGNAL(MUS,vme1.adc_0.data[0],DATA32);
+//SIGNAL(MUS41_A_2, vme1.adc_0.data[1],(DATA12_OVERFLOW,float));
+//SIGNAL(MUS41_A_3, vme1.adc_0.data[2],(DATA12_OVERFLOW,float));
+//SIGNAL(MUS41_A_4, vme1.adc_0.data[3],(DATA12_OVERFLOW,float));
+//SIGNAL(MUS41_A_5, vme1.adc_0.data[4],(DATA12_OVERFLOW,float));
+//SIGNAL(MUS41_A_6, vme1.adc_0.data[5],(DATA12_OVERFLOW,float));
+//SIGNAL(MUS41_A_7, vme1.adc_0.data[6],(DATA12_OVERFLOW,float));
+//SIGNAL(MUS41_A_8, vme1.adc_0.data[7],(DATA12_OVERFLOW,float));
+
+
+//TPC anodes
+
+//SIGNAL(TPC_3_A_1, vme1.adc0.data[8],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_A_2, vme1.adc0.data[9],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_A_3, vme1.adc0.data[10],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_A_4, vme1.adc0.data[11],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_AL_1, vme1.adc0.data[12],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_AR_1, vme1.adc0.data[13],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_AL_2, vme1.adc0.data[14],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_AR_2, vme1.adc0.data[15],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_A_1, vme1.adc0.data[16],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_A_2, vme1.adc0.data[17],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_A_3, vme1.adc0.data[18],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_A_4, vme1.adc0.data[19],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_AL_1, vme1.adc0.data[20],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_AR_1, vme1.adc0.data[21],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_AL_2, vme1.adc0.data[22],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_AR_2, vme1.adc0.data[23],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_A_1, vme1.adc0.data[24],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_A_2, vme1.adc0.data[25],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_A_3, vme1.adc0.data[26],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_A_4, vme1.adc0.data[27],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC2_AL_1, vme1.adc0.data[28],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_AR_1, vme1.adc0.data[29],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_AL_2, vme1.adc0.data[30],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_AR_2, vme1.adc0.data[31],(DATA12_OVERFLOW,float));
+
+//TPC cathodes
+
+//SIGNAL(TPC_3_DT_1, vme1.tdc0.data[8],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_DT_2, vme1.tdc0.data[9],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_DT_3, vme1.tdc0.data[10],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_DT_4, vme1.tdc0.data[11],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_LT_1, vme1.tdc0.data[12],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_RT_1, vme1.tdc0.data[13],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_LT_2, vme1.tdc0.data[14],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_3_RT_2, vme1.tdc0.data[15],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_DT_1, vme1.tdc0.data[16],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_DT_2, vme1.tdc0.data[17],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_DT_3, vme1.tdc0.data[18],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_DT_4, vme1.tdc0.data[19],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_LT_1, vme1.tdc0.data[20],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_RT_1, vme1.tdc0.data[21],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_LT_2, vme1.tdc0.data[22],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_1_RT_2, vme1.tdc0.data[23],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_DT_1, vme1.tdc0.data[24],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_DT_2, vme1.tdc0.data[25],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_DT_3, vme1.tdc0.data[26],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_DT_4, vme1.tdc0.data[27],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_LT_1, vme1.tdc0.data[28],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_RT_1, vme1.tdc0.data[29],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_LT_2, vme1.tdc0.data[30],(DATA12_OVERFLOW,float));
+//SIGNAL(TPC_2_RT_2, vme1.tdc0.data[31],(DATA12_OVERFLOW,float));
+
